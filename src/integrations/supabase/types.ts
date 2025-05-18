@@ -9,7 +9,152 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      assignments: {
+        Row: {
+          assigned_to: string[]
+          case_reference: string | null
+          client_name: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          due_date: string
+          estimated_hours: number
+          id: string
+          partners: string[]
+          priority: string
+          status: string
+          title: string
+        }
+        Insert: {
+          assigned_to?: string[]
+          case_reference?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          due_date: string
+          estimated_hours?: number
+          id?: string
+          partners?: string[]
+          priority: string
+          status: string
+          title: string
+        }
+        Update: {
+          assigned_to?: string[]
+          case_reference?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          due_date?: string
+          estimated_hours?: number
+          id?: string
+          partners?: string[]
+          priority?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          avatar: string | null
+          created_at: string | null
+          department: string
+          email: string
+          id: string
+          name: string
+          role: string
+          skills: string[]
+          specialty: string[]
+          workload: number
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string | null
+          department: string
+          email: string
+          id?: string
+          name: string
+          role: string
+          skills?: string[]
+          specialty?: string[]
+          workload?: number
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string | null
+          department?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          skills?: string[]
+          specialty?: string[]
+          workload?: number
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          assignment_id: string
+          completed_at: string | null
+          created_at: string | null
+          description: string
+          due_date: string
+          id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          assignment_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          description: string
+          due_date: string
+          id?: string
+          status: string
+          title: string
+        }
+        Update: {
+          assigned_to?: string | null
+          assignment_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

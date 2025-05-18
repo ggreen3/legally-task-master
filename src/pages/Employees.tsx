@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -17,19 +18,78 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import EmployeeCard from '@/components/employees/EmployeeCard';
-import { mockEmployees, Employee } from '@/types';
+import { Employee } from '@/types';
 import { Search } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const Employees: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<string[]>(['all']);
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   
-  // Get all unique departments
-  const departments = ['all', ...Array.from(new Set(mockEmployees.map(e => e.department)))];
+  // Fetch employees from Supabase
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('employees')
+          .select('*');
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          setEmployees(data as Employee[]);
+          
+          // Extract unique departments for filter
+          const uniqueDepartments = ['all', ...Array.from(new Set(data.map(e => e.department)))];
+          setDepartments(uniqueDepartments);
+        }
+      } catch (error) {
+        console.error('Error fetching employees:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load employees data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
+    
+    // Set up realtime subscription for live updates
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'employees'
+        },
+        (payload) => {
+          // Refetch data when changes occur
+          fetchEmployees();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
   
   // Filter employees based on search and department
-  const filteredEmployees = mockEmployees.filter(employee => {
+  const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           employee.specialty.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -41,7 +101,7 @@ const Employees: React.FC = () => {
   });
 
   const handleEmployeeSelect = (id: string) => {
-    const employee = mockEmployees.find(e => e.id === id) || null;
+    const employee = employees.find(e => e.id === id) || null;
     setSelectedEmployee(employee);
   };
   
@@ -83,20 +143,28 @@ const Employees: React.FC = () => {
         </Select>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEmployees.map(employee => (
-          <EmployeeCard 
-            key={employee.id} 
-            employee={employee} 
-            onSelect={handleEmployeeSelect} 
-          />
-        ))}
-      </div>
-      
-      {filteredEmployees.length === 0 && (
+      {loading ? (
         <div className="text-center p-8">
-          <p className="text-muted-foreground">No team members found matching your search criteria.</p>
+          <p className="text-muted-foreground">Loading employees data...</p>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredEmployees.map(employee => (
+              <EmployeeCard 
+                key={employee.id} 
+                employee={employee} 
+                onSelect={handleEmployeeSelect} 
+              />
+            ))}
+          </div>
+          
+          {filteredEmployees.length === 0 && (
+            <div className="text-center p-8">
+              <p className="text-muted-foreground">No team members found matching your search criteria.</p>
+            </div>
+          )}
+        </>
       )}
       
       {/* Employee Detail Dialog */}
@@ -121,7 +189,6 @@ const Employees: React.FC = () => {
                 </div>
               </div>
               
-              {/* Additional employee details would go here */}
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-medium mb-2">Specialties</h3>
