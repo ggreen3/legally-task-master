@@ -45,6 +45,12 @@ const Employees: React.FC = () => {
     setSelectedEmployee(employee);
   };
   
+  const getProgressColor = (workload: number) => {
+    if (workload > 80) return 'bg-red-100';
+    if (workload > 60) return 'bg-amber-100';
+    return 'bg-green-100';
+  };
+  
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -149,20 +155,7 @@ const Employees: React.FC = () => {
                   </div>
                   <Progress 
                     value={selectedEmployee.workload} 
-                    className={
-                      selectedEmployee.workload > 80 
-                        ? 'bg-red-100' 
-                        : selectedEmployee.workload > 60 
-                        ? 'bg-amber-100' 
-                        : 'bg-green-100'
-                    }
-                    indicatorClassName={
-                      selectedEmployee.workload > 80 
-                        ? 'bg-red-500' 
-                        : selectedEmployee.workload > 60 
-                        ? 'bg-amber-500' 
-                        : 'bg-green-500'
-                    }
+                    className={getProgressColor(selectedEmployee.workload)}
                   />
                 </div>
                 

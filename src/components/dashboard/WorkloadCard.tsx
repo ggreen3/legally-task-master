@@ -9,6 +9,12 @@ interface WorkloadCardProps {
 }
 
 const WorkloadCard: React.FC<WorkloadCardProps> = ({ employees }) => {
+  const getProgressColor = (workload: number) => {
+    if (workload > 80) return 'bg-red-100';
+    if (workload > 60) return 'bg-amber-100';
+    return 'bg-green-100';
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -24,20 +30,7 @@ const WorkloadCard: React.FC<WorkloadCardProps> = ({ employees }) => {
               </div>
               <Progress 
                 value={employee.workload} 
-                className={`h-2 ${
-                  employee.workload > 80 
-                    ? 'bg-red-100' 
-                    : employee.workload > 60 
-                    ? 'bg-amber-100' 
-                    : 'bg-green-100'
-                }`}
-                indicatorClassName={
-                  employee.workload > 80 
-                    ? 'bg-red-500' 
-                    : employee.workload > 60 
-                    ? 'bg-amber-500' 
-                    : 'bg-green-500'
-                }
+                className={`h-2 ${getProgressColor(employee.workload)}`}
               />
             </div>
           ))}
