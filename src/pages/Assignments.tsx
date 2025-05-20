@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { adaptAssignment, prepareAssignmentForDb } from '@/utils/databaseAdapters';
 
 const Assignments: React.FC = () => {
   const { toast } = useToast();
@@ -42,7 +43,10 @@ const Assignments: React.FC = () => {
         
         if (employeesError) throw employeesError;
         
-        setAssignments(assignmentsData as Assignment[]);
+        // Use the adapter to convert database records to our application model
+        const adaptedAssignments = assignmentsData.map(adaptAssignment);
+        
+        setAssignments(adaptedAssignments);
         setEmployees(employeesData as Employee[]);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -67,7 +71,9 @@ const Assignments: React.FC = () => {
           // Refresh assignments when there's a change
           const { data, error } = await supabase.from('assignments').select('*');
           if (!error && data) {
-            setAssignments(data as Assignment[]);
+            // Use the adapter to convert database records to our application model
+            const adaptedAssignments = data.map(adaptAssignment);
+            setAssignments(adaptedAssignments);
           }
         })
       .subscribe();
@@ -78,19 +84,20 @@ const Assignments: React.FC = () => {
   }, [toast]);
 
   const handleCreateAssignment = async (formData: any) => {
-    const newAssignment = {
+    // Prepare assignment data for database using our adapter
+    const newAssignment = prepareAssignmentForDb({
       title: formData.title,
       description: formData.description,
       priority: formData.priority,
       status: 'unassigned',
-      due_date: formData.dueDate,
-      created_by: formData.createdBy || null,
-      assigned_to: formData.assignedTo ? [formData.assignedTo] : [],
+      dueDate: formData.dueDate,
+      createdBy: formData.createdBy || null,
+      assignedTo: formData.assignedTo ? [formData.assignedTo] : [],
       partners: [],
-      estimated_hours: formData.estimatedHours,
-      client_name: formData.clientName || null,
-      case_reference: formData.caseReference || null
-    };
+      estimatedHours: formData.estimatedHours,
+      clientName: formData.clientName || null,
+      caseReference: formData.caseReference || null
+    });
     
     try {
       const { data, error } = await supabase

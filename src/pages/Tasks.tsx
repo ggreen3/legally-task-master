@@ -14,6 +14,7 @@ import { Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { adaptTask, prepareTaskForDb } from '@/utils/databaseAdapters';
 
 const Tasks: React.FC = () => {
   const { toast } = useToast();
@@ -60,7 +61,10 @@ const Tasks: React.FC = () => {
           return acc;
         }, {} as {[key: string]: string});
         
-        setTasks(tasksData as Task[]);
+        // Use the adapter to convert database records to our application model
+        const adaptedTasks = tasksData.map(adaptTask);
+        
+        setTasks(adaptedTasks);
         setAssignments(assignmentLookup);
         setEmployees(employeeLookup);
       } catch (error) {
@@ -86,7 +90,9 @@ const Tasks: React.FC = () => {
           // Refresh tasks when there's a change
           const { data, error } = await supabase.from('tasks').select('*');
           if (!error && data) {
-            setTasks(data as Task[]);
+            // Use the adapter to convert database records to our application model
+            const adaptedTasks = data.map(adaptTask);
+            setTasks(adaptedTasks);
           }
         })
       .subscribe();
@@ -107,12 +113,15 @@ const Tasks: React.FC = () => {
 
   const handleCompleteTask = async (taskId: string) => {
     try {
+      // Prepare the update data for database
+      const updateData = prepareTaskForDb({
+        status: 'completed',
+        completedAt: new Date().toISOString()
+      });
+      
       const { error } = await supabase
         .from('tasks')
-        .update({ 
-          status: 'completed', 
-          completed_at: new Date().toISOString() 
-        })
+        .update(updateData)
         .eq('id', taskId);
       
       if (error) throw error;
