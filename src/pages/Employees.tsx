@@ -13,15 +13,20 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import EmployeeCard from '@/components/employees/EmployeeCard';
+import EmployeeForm from '@/components/employees/EmployeeForm';
 import { Employee } from '@/types';
-import { Search } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Mail } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { sendEmailNotification } from '@/components/employees/sendEmailNotification';
 
 const Employees: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,39 +36,43 @@ const Employees: React.FC = () => {
   const [departments, setDepartments] = useState<string[]>(['all']);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   
   // Fetch employees from Supabase
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('employees')
-          .select('*');
-        
-        if (error) {
-          throw error;
-        }
-        
-        if (data) {
-          setEmployees(data as Employee[]);
-          
-          // Extract unique departments for filter
-          const uniqueDepartments = ['all', ...Array.from(new Set(data.map(e => e.department)))];
-          setDepartments(uniqueDepartments);
-        }
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load employees data",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*');
+      
+      if (error) {
+        throw error;
       }
-    };
+      
+      if (data) {
+        setEmployees(data as Employee[]);
+        
+        // Extract unique departments for filter
+        const uniqueDepartments = ['all', ...Array.from(new Set(data.map(e => e.department)))];
+        setDepartments(uniqueDepartments);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load employees data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchEmployees();
     
     // Set up realtime subscription for live updates
@@ -110,12 +119,79 @@ const Employees: React.FC = () => {
     if (workload > 60) return 'bg-amber-100';
     return 'bg-green-100';
   };
+
+  const handleDeleteClick = (employee: Employee) => {
+    setEmployeeToDelete(employee);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!employeeToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', employeeToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Employee Deleted",
+        description: `${employeeToDelete.name} has been removed from the team.`,
+      });
+      
+      // Close the dialogs
+      setIsDeleteDialogOpen(false);
+      setEmployeeToDelete(null);
+      
+      // If we're deleting the currently viewed employee, close their detail dialog too
+      if (selectedEmployee && selectedEmployee.id === employeeToDelete.id) {
+        setSelectedEmployee(null);
+      }
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete employee",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddEditClick = (employee?: Employee) => {
+    setEditingEmployee(employee || null);
+    setIsFormOpen(true);
+  };
+
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    setEditingEmployee(null);
+  };
+
+  const handleSendEmail = (employee: Employee) => {
+    const subject = "Team Assignment Notification";
+    const body = `Hello ${employee.name},\n\nYou have been assigned to a new task.\n\nPlease check your dashboard for more details.\n\nBest regards,\nThe Legal Team`;
+    
+    sendEmailNotification(employee.email, subject, body);
+    
+    toast({
+      title: "Email Client Opened",
+      description: `An email to ${employee.name} has been prepared in your email client.`,
+    });
+  };
   
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-semibold text-legally-900">Team Members</h1>
-        <p className="text-muted-foreground">View and manage your team</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-legally-900">Team Members</h1>
+          <p className="text-muted-foreground">View and manage your team</p>
+        </div>
+        <Button onClick={() => handleAddEditClick()} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Add Team Member
+        </Button>
       </div>
       
       <div className="flex flex-col sm:flex-row gap-4">
@@ -182,10 +258,39 @@ const Employees: React.FC = () => {
                     {selectedEmployee.name.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="flex-1">
                   <h2 className="text-xl font-semibold">{selectedEmployee.name}</h2>
                   <p className="text-muted-foreground">{selectedEmployee.role} • {selectedEmployee.department}</p>
                   <p className="text-sm mt-1">{selectedEmployee.email}</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                    onClick={() => handleAddEditClick(selectedEmployee)}
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1 text-red-500 border-red-200 hover:bg-red-50"
+                    onClick={() => handleDeleteClick(selectedEmployee)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                    onClick={() => handleSendEmail(selectedEmployee)}
+                  >
+                    <Mail className="h-4 w-4" />
+                    Email
+                  </Button>
                 </div>
               </div>
               
@@ -237,6 +342,44 @@ const Employees: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Employee</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-muted-foreground">
+              Are you sure you want to delete {employeeToDelete?.name}? This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add/Edit Employee Form Dialog */}
+      {isFormOpen && (
+        <EmployeeForm
+          open={isFormOpen}
+          onClose={handleFormClose}
+          employee={editingEmployee || undefined}
+          onSubmitSuccess={fetchEmployees}
+        />
+      )}
     </div>
   );
 };
