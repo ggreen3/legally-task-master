@@ -13,7 +13,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { adaptAssignment, prepareAssignmentForDb } from '@/utils/databaseAdapters';
+import { 
+  adaptAssignment, 
+  prepareAssignmentForDb, 
+  prepareTaskForDb, 
+  createDefaultTaskForAssignment 
+} from '@/utils/databaseAdapters';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Assignments: React.FC = () => {
   const { toast } = useToast();
@@ -22,6 +28,7 @@ const Assignments: React.FC = () => {
   const [showNewAssignmentForm, setShowNewAssignmentForm] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   // Fetch assignments and employees on component mount
   useEffect(() => {
@@ -100,12 +107,44 @@ const Assignments: React.FC = () => {
     });
     
     try {
+      // Insert the new assignment
       const { data, error } = await supabase
         .from('assignments')
         .insert(newAssignment)
         .select();
       
       if (error) throw error;
+      
+      // Create a default task for this assignment
+      if (data && data.length > 0) {
+        const assignment = data[0];
+        const firstAssignedPerson = assignment.assigned_to && assignment.assigned_to.length > 0 
+          ? assignment.assigned_to[0] 
+          : null;
+        
+        const defaultTask = createDefaultTaskForAssignment(
+          assignment.id,
+          assignment.title,
+          firstAssignedPerson,
+          assignment.due_date
+        );
+        
+        const dbTask = prepareTaskForDb(defaultTask);
+        
+        // Insert the task
+        const { error: taskError } = await supabase
+          .from('tasks')
+          .insert(dbTask);
+          
+        if (taskError) {
+          console.error('Error creating default task:', taskError);
+          toast({
+            title: "Warning",
+            description: "Assignment created, but failed to create default task.",
+            variant: "destructive",
+          });
+        }
+      }
       
       setShowNewAssignmentForm(false);
       
@@ -129,13 +168,13 @@ const Assignments: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-legally-900">Assignments</h1>
           <p className="text-muted-foreground">Manage case assignments and workload</p>
         </div>
         <Button 
-          className="bg-legally-700 hover:bg-legally-800"
+          className="bg-legally-700 hover:bg-legally-800 w-full sm:w-auto"
           onClick={() => setShowNewAssignmentForm(true)}
         >
           Create Assignment
@@ -168,7 +207,7 @@ const Assignments: React.FC = () => {
       
       {/* New Assignment Dialog */}
       <Dialog open={showNewAssignmentForm} onOpenChange={setShowNewAssignmentForm}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className={isMobile ? "w-[95%] max-w-[95%] sm:max-w-[600px]" : "sm:max-w-[600px]"}>
           <DialogHeader>
             <DialogTitle>Create New Assignment</DialogTitle>
             <DialogDescription>
@@ -181,7 +220,7 @@ const Assignments: React.FC = () => {
       
       {/* Edit Assignment Dialog - Add edit form here when needed */}
       <Dialog open={!!editingAssignmentId} onOpenChange={() => setEditingAssignmentId(null)}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className={isMobile ? "w-[95%] max-w-[95%] sm:max-w-[600px]" : "sm:max-w-[600px]"}>
           <DialogHeader>
             <DialogTitle>Manage Assignment</DialogTitle>
             <DialogDescription>

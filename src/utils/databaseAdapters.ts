@@ -82,3 +82,22 @@ export const prepareTaskForDb = (task: Partial<Task>): any => {
   
   return dbTask;
 };
+
+/**
+ * Creates a default task for a new assignment
+ */
+export const createDefaultTaskForAssignment = (
+  assignmentId: string,
+  assignmentTitle: string,
+  assignedTo: string | null,
+  dueDate: string
+): Partial<Task> => {
+  return {
+    assignmentId,
+    title: `Review ${assignmentTitle}`,
+    description: `Initial review and planning for ${assignmentTitle}`,
+    status: 'todo',
+    assignedTo: assignedTo || '',
+    dueDate
+  };
+};

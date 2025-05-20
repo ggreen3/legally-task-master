@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { adaptTask, prepareTaskForDb } from '@/utils/databaseAdapters';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Tasks: React.FC = () => {
   const { toast } = useToast();
@@ -23,6 +24,7 @@ const Tasks: React.FC = () => {
   const [assignments, setAssignments] = useState<{[key: string]: {title: string, client_name?: string}}>({}); 
   const [employees, setEmployees] = useState<{[key: string]: string}>({}); 
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Fetch tasks, assignments, and employees data
@@ -168,6 +170,93 @@ const Tasks: React.FC = () => {
     );
   }
 
+  // For mobile view, we'll stack the columns vertically
+  if (isMobile) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-2xl font-semibold text-legally-900">Task Tracker</h1>
+          <p className="text-muted-foreground">Track and manage individual tasks</p>
+        </div>
+        
+        <div className="w-full">
+          <Input 
+            placeholder="Search tasks..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+          />
+        </div>
+        
+        <div className="space-y-6">
+          {/* To Do Column */}
+          <Card>
+            <CardHeader className="bg-amber-50 pb-2">
+              <CardTitle className="text-amber-800">To Do ({todoTasks.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 space-y-3">
+              {todoTasks.map(task => (
+                <TaskCard 
+                  key={task.id} 
+                  task={task} 
+                  assignmentTitle={getAssignmentTitle(task.assignmentId)}
+                  employeeName={getEmployeeName(task.assignedTo)}
+                  onComplete={handleCompleteTask}
+                />
+              ))}
+              {todoTasks.length === 0 && (
+                <EmptyState status="todo" />
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* In Progress Column */}
+          <Card>
+            <CardHeader className="bg-indigo-50 pb-2">
+              <CardTitle className="text-indigo-800">In Progress ({inProgressTasks.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 space-y-3">
+              {inProgressTasks.map(task => (
+                <TaskCard 
+                  key={task.id} 
+                  task={task} 
+                  assignmentTitle={getAssignmentTitle(task.assignmentId)}
+                  employeeName={getEmployeeName(task.assignedTo)}
+                  onComplete={handleCompleteTask}
+                />
+              ))}
+              {inProgressTasks.length === 0 && (
+                <EmptyState status="in-progress" />
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Completed Column */}
+          <Card>
+            <CardHeader className="bg-green-50 pb-2">
+              <CardTitle className="text-green-800">Completed ({completedTasks.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 space-y-3">
+              {completedTasks.map(task => (
+                <TaskCard 
+                  key={task.id} 
+                  task={task} 
+                  assignmentTitle={getAssignmentTitle(task.assignmentId)}
+                  employeeName={getEmployeeName(task.assignedTo)}
+                  onComplete={handleCompleteTask}
+                  isCompleted
+                />
+              ))}
+              {completedTasks.length === 0 && (
+                <EmptyState status="completed" />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop view remains the same with side-by-side columns
   return (
     <div className="space-y-6 animate-fade-in">
       <div>

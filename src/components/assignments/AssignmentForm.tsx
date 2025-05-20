@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -24,6 +23,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { sendEmailNotification } from '@/components/employees/sendEmailNotification';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AssignmentFormProps {
   employees: Employee[];
@@ -90,6 +90,8 @@ Legal Case Management System
     form.reset();
   };
 
+  const isMobile = useIsMobile();
+
   return (
     <Card className="w-full">
       <Form {...form}>
@@ -127,7 +129,7 @@ Legal Case Management System
               )}
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="priority"
@@ -170,7 +172,7 @@ Legal Case Management System
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="estimatedHours"
@@ -225,7 +227,7 @@ Legal Case Management System
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className={isMobile ? "text-sm" : ""}>
                         <SelectValue placeholder="Select creator" />
                       </SelectTrigger>
                     </FormControl>
@@ -242,7 +244,7 @@ Legal Case Management System
               )}
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="clientName"
@@ -273,7 +275,9 @@ Legal Case Management System
             </div>
           </CardContent>
           <CardFooter className="flex justify-end">
-            <Button type="submit" className="bg-legally-700 hover:bg-legally-800">Create Assignment</Button>
+            <Button type="submit" className={`bg-legally-700 hover:bg-legally-800 ${isMobile ? "w-full" : ""}`}>
+              Create Assignment
+            </Button>
           </CardFooter>
         </form>
       </Form>
