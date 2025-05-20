@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -10,37 +9,126 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { mockTasks, mockAssignments, mockEmployees, Task } from '@/types';
+import { Task } from '@/types';
 import { Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Tasks: React.FC = () => {
   const { toast } = useToast();
-  const [tasks, setTasks] = useState<Task[]>([...mockTasks]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [assignments, setAssignments] = useState<{[key: string]: {title: string, client_name?: string}}>({}); 
+  const [employees, setEmployees] = useState<{[key: string]: string}>({}); 
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch tasks, assignments, and employees data
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch tasks
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select('*');
+        
+        if (tasksError) throw tasksError;
+        
+        // Fetch assignments for lookup
+        const { data: assignmentsData, error: assignmentsError } = await supabase
+          .from('assignments')
+          .select('id, title, client_name');
+        
+        if (assignmentsError) throw assignmentsError;
+        
+        // Fetch employees for lookup
+        const { data: employeesData, error: employeesError } = await supabase
+          .from('employees')
+          .select('id, name');
+        
+        if (employeesError) throw employeesError;
+        
+        // Create lookup objects
+        const assignmentLookup = assignmentsData.reduce((acc, curr) => {
+          acc[curr.id] = { title: curr.title, client_name: curr.client_name };
+          return acc;
+        }, {} as {[key: string]: {title: string, client_name?: string}});
+        
+        const employeeLookup = employeesData.reduce((acc, curr) => {
+          acc[curr.id] = curr.name;
+          return acc;
+        }, {} as {[key: string]: string});
+        
+        setTasks(tasksData as Task[]);
+        setAssignments(assignmentLookup);
+        setEmployees(employeeLookup);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load tasks data.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+    
+    // Set up real-time subscriptions for tasks
+    const tasksSubscription = supabase
+      .channel('public:tasks')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'tasks' }, 
+        async (payload) => {
+          // Refresh tasks when there's a change
+          const { data, error } = await supabase.from('tasks').select('*');
+          if (!error && data) {
+            setTasks(data as Task[]);
+          }
+        })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(tasksSubscription);
+    };
+  }, [toast]);
 
   const getAssignmentTitle = (assignmentId: string) => {
-    const assignment = mockAssignments.find(a => a.id === assignmentId);
-    return assignment ? assignment.title : 'Unknown Assignment';
+    return assignments[assignmentId]?.title || 'Unknown Assignment';
   };
 
-  const getEmployeeName = (employeeId: string) => {
-    const employee = mockEmployees.find(e => e.id === employeeId);
-    return employee ? employee.name : 'Unassigned';
+  const getEmployeeName = (employeeId?: string) => {
+    if (!employeeId) return 'Unassigned';
+    return employees[employeeId] || 'Unknown Employee';
   };
 
-  const handleCompleteTask = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, status: 'completed', completedAt: new Date().toISOString() } 
-        : task
-    ));
-    
-    toast({
-      title: "Task Completed",
-      description: "The task has been marked as completed.",
-    });
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'completed', 
+          completed_at: new Date().toISOString() 
+        })
+        .eq('id', taskId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Task Completed",
+        description: "The task has been marked as completed.",
+      });
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete task. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredTasks = tasks.filter(task => 
@@ -54,6 +142,22 @@ const Tasks: React.FC = () => {
   const todoTasks = filteredTasks.filter(task => task.status === 'todo');
   const inProgressTasks = filteredTasks.filter(task => task.status === 'in-progress');
   const completedTasks = filteredTasks.filter(task => task.status === 'completed');
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-2xl font-semibold text-legally-900">Task Tracker</h1>
+          <p className="text-muted-foreground">Loading tasks...</p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

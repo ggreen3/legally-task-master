@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import AssignmentForm from '@/components/assignments/AssignmentForm';
 import AssignmentCard from '@/components/assignments/AssignmentCard';
-import { mockAssignments, mockEmployees, Assignment } from '@/types';
+import { Assignment, Employee } from '@/types';
 import { useToast } from "@/components/ui/use-toast";
 import {
   Dialog,
@@ -12,36 +12,108 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 const Assignments: React.FC = () => {
   const { toast } = useToast();
-  const [assignments, setAssignments] = useState([...mockAssignments]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [showNewAssignmentForm, setShowNewAssignmentForm] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleCreateAssignment = (formData: any) => {
-    const newAssignment: Assignment = {
-      id: `${assignments.length + 1}`,
+  // Fetch assignments and employees on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Fetch assignments
+        const { data: assignmentsData, error: assignmentsError } = await supabase
+          .from('assignments')
+          .select('*');
+        
+        if (assignmentsError) throw assignmentsError;
+        
+        // Fetch employees
+        const { data: employeesData, error: employeesError } = await supabase
+          .from('employees')
+          .select('*');
+        
+        if (employeesError) throw employeesError;
+        
+        setAssignments(assignmentsData as Assignment[]);
+        setEmployees(employeesData as Employee[]);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load assignments or employees.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+    
+    // Set up real-time subscription for assignments
+    const assignmentsSubscription = supabase
+      .channel('public:assignments')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'assignments' }, 
+        async (payload) => {
+          // Refresh assignments when there's a change
+          const { data, error } = await supabase.from('assignments').select('*');
+          if (!error && data) {
+            setAssignments(data as Assignment[]);
+          }
+        })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(assignmentsSubscription);
+    };
+  }, [toast]);
+
+  const handleCreateAssignment = async (formData: any) => {
+    const newAssignment = {
       title: formData.title,
       description: formData.description,
       priority: formData.priority,
       status: 'unassigned',
-      dueDate: formData.dueDate,
-      createdBy: '1', // Assuming current user ID is 1
-      assignedTo: formData.assignedTo ? [formData.assignedTo] : [],
+      due_date: formData.dueDate,
+      created_by: formData.createdBy || null,
+      assigned_to: formData.assignedTo ? [formData.assignedTo] : [],
       partners: [],
-      estimatedHours: formData.estimatedHours,
-      clientName: formData.clientName || undefined,
-      caseReference: formData.caseReference || undefined
+      estimated_hours: formData.estimatedHours,
+      client_name: formData.clientName || null,
+      case_reference: formData.caseReference || null
     };
     
-    setAssignments([...assignments, newAssignment]);
-    setShowNewAssignmentForm(false);
-    
-    toast({
-      title: "Assignment Created",
-      description: `${formData.title} has been successfully created.`,
-    });
+    try {
+      const { data, error } = await supabase
+        .from('assignments')
+        .insert(newAssignment)
+        .select();
+      
+      if (error) throw error;
+      
+      setShowNewAssignmentForm(false);
+      
+      toast({
+        title: "Assignment Created",
+        description: `${formData.title} has been successfully created and saved to the database.`,
+      });
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create assignment. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditClick = (id: string) => {
@@ -63,16 +135,29 @@ const Assignments: React.FC = () => {
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {assignments.map(assignment => (
-          <AssignmentCard 
-            key={assignment.id} 
-            assignment={assignment} 
-            employees={mockEmployees} 
-            onEditClick={handleEditClick}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {assignments.map(assignment => (
+            <AssignmentCard 
+              key={assignment.id} 
+              assignment={assignment} 
+              employees={employees} 
+              onEditClick={handleEditClick}
+            />
+          ))}
+          {assignments.length === 0 && (
+            <div className="col-span-3 text-center py-12">
+              <p className="text-muted-foreground">No assignments found. Create your first assignment!</p>
+            </div>
+          )}
+        </div>
+      )}
       
       {/* New Assignment Dialog */}
       <Dialog open={showNewAssignmentForm} onOpenChange={setShowNewAssignmentForm}>
@@ -83,7 +168,7 @@ const Assignments: React.FC = () => {
               Fill out the form below to create a new work assignment.
             </DialogDescription>
           </DialogHeader>
-          <AssignmentForm employees={mockEmployees} onSubmit={handleCreateAssignment} />
+          <AssignmentForm employees={employees} onSubmit={handleCreateAssignment} />
         </DialogContent>
       </Dialog>
       

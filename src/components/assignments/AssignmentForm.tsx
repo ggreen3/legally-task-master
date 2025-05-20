@@ -1,9 +1,8 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -24,6 +23,7 @@ import { Employee } from '@/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { sendEmailNotification } from '@/components/employees/sendEmailNotification';
 
 interface AssignmentFormProps {
   employees: Employee[];
@@ -38,7 +38,8 @@ const formSchema = z.object({
   estimatedHours: z.coerce.number().min(1, { message: "Estimated hours must be at least 1" }),
   clientName: z.string().optional(),
   caseReference: z.string().optional(),
-  assignedTo: z.string().optional()
+  assignedTo: z.string().optional(),
+  createdBy: z.string().optional()
 });
 
 const AssignmentForm: React.FC<AssignmentFormProps> = ({ employees, onSubmit }) => {
@@ -52,20 +53,45 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({ employees, onSubmit }) 
       estimatedHours: 1,
       clientName: "",
       caseReference: "",
-      assignedTo: ""
+      assignedTo: "",
+      createdBy: employees[0]?.id || ""
     },
   });
 
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
+    // Send email notification if employee is assigned
+    if (data.assignedTo) {
+      const assignedEmployee = employees.find(e => e.id === data.assignedTo);
+      if (assignedEmployee) {
+        const subject = `New Assignment: ${data.title}`;
+        const body = `
+Hello ${assignedEmployee.name},
+
+You have been assigned to a new task: ${data.title}
+
+Description: ${data.description}
+Priority: ${data.priority}
+Due Date: ${data.dueDate}
+Estimated Hours: ${data.estimatedHours}
+${data.clientName ? `Client: ${data.clientName}` : ''}
+${data.caseReference ? `Case Reference: ${data.caseReference}` : ''}
+
+Please review this assignment at your earliest convenience.
+
+Thank you,
+Legal Case Management System
+        `;
+        
+        sendEmailNotification(assignedEmployee.email, subject, body);
+      }
+    }
+    
     onSubmit(data);
     form.reset();
   };
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-legally-900">Create New Assignment</CardTitle>
-      </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)}>
           <CardContent className="space-y-4">
@@ -187,6 +213,34 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({ employees, onSubmit }) 
                 )}
               />
             </div>
+            
+            <FormField
+              control={form.control}
+              name="createdBy"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Creator</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select creator" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {employees.map(employee => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.name} - {employee.role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
