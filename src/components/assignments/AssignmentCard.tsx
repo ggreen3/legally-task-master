@@ -1,11 +1,19 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Assignment, Employee } from '@/types';
 import { format } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import DocumentManagement from '../documents/DocumentManagement';
+import { FileText } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AssignmentCardProps {
   assignment: Assignment;
@@ -17,6 +25,9 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, employees, 
   const assignedEmployees = employees.filter(employee => 
     assignment.assignedTo.includes(employee.id)
   );
+  
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const getStatusBadgeClass = (status: Assignment['status']) => {
     switch(status) {
@@ -38,6 +49,9 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, employees, 
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+  
+  // Get the first assigned employee ID for document uploads
+  const firstEmployeeId = assignment.assignedTo[0] || '';
   
   return (
     <Card className="h-full flex flex-col">
@@ -98,14 +112,39 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, employees, 
             </div>
           </div>
         )}
-        <Button 
-          variant="outline" 
-          className="w-full border-legally-700 text-legally-700 hover:bg-legally-50" 
-          onClick={() => onEditClick(assignment.id)}
-        >
-          Manage Assignment
-        </Button>
+        
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <Button 
+            variant="outline" 
+            className="flex-1 border-legally-700 text-legally-700 hover:bg-legally-50" 
+            onClick={() => onEditClick(assignment.id)}
+          >
+            Manage Assignment
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="flex-1 border-legally-700 text-legally-700 hover:bg-legally-50"
+            onClick={() => setDocumentsOpen(true)}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Documents
+          </Button>
+        </div>
       </CardFooter>
+      
+      {/* Document Management Dialog */}
+      <Dialog open={documentsOpen} onOpenChange={setDocumentsOpen}>
+        <DialogContent className={isMobile ? "w-[95%] max-w-[95%] sm:max-w-[700px]" : "sm:max-w-[700px]"}>
+          <DialogHeader>
+            <DialogTitle>Assignment Documents</DialogTitle>
+          </DialogHeader>
+          <DocumentManagement 
+            assignmentId={assignment.id} 
+            employeeId={firstEmployeeId}
+          />
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

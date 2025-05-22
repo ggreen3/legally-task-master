@@ -20,6 +20,7 @@ import {
   createDefaultTaskForAssignment 
 } from '@/utils/databaseAdapters';
 import { useIsMobile } from '@/hooks/use-mobile';
+import DocumentManagement from '@/components/documents/DocumentManagement';
 
 const Assignments: React.FC = () => {
   const { toast } = useToast();
@@ -166,6 +167,16 @@ const Assignments: React.FC = () => {
     setEditingAssignmentId(id);
   };
 
+  // Find the assigned employee ID for the editing assignment
+  const getFirstAssignedEmployeeId = () => {
+    if (!editingAssignmentId) return '';
+    
+    const assignment = assignments.find(a => a.id === editingAssignmentId);
+    if (!assignment) return '';
+    
+    return assignment.assignedTo[0] || '';
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -218,19 +229,21 @@ const Assignments: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Edit Assignment Dialog - Add edit form here when needed */}
+      {/* Edit Assignment Dialog */}
       <Dialog open={!!editingAssignmentId} onOpenChange={() => setEditingAssignmentId(null)}>
-        <DialogContent className={isMobile ? "w-[95%] max-w-[95%] sm:max-w-[600px]" : "sm:max-w-[600px]"}>
+        <DialogContent className={isMobile ? "w-[95%] max-w-[95%] sm:max-w-[700px]" : "sm:max-w-[700px]"}>
           <DialogHeader>
             <DialogTitle>Manage Assignment</DialogTitle>
             <DialogDescription>
-              Edit assignment details, change status, or reassign work.
+              Edit assignment details, upload documents, or manage tasks.
             </DialogDescription>
           </DialogHeader>
-          <div className="p-6 text-center">
-            <p>Assignment management UI would go here.</p>
-            <p className="text-muted-foreground">Editing assignment ID: {editingAssignmentId}</p>
-          </div>
+          {editingAssignmentId && (
+            <DocumentManagement 
+              assignmentId={editingAssignmentId} 
+              employeeId={getFirstAssignedEmployeeId()} 
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

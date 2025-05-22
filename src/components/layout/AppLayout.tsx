@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -11,6 +11,13 @@ const AppLayout: React.FC = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
+  // Close sidebar when route changes (for mobile)
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  }, [window.location.pathname]);
+  
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -21,12 +28,15 @@ const AppLayout: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {isMobile ? (
           <>
+            {/* Overlay when sidebar is open */}
             {sidebarOpen && (
               <div 
-                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
                 onClick={toggleSidebar}
               />
             )}
+            
+            {/* Mobile sidebar with slide animation */}
             <div 
               className={`fixed top-16 left-0 bottom-0 z-50 transition-transform duration-300 ease-in-out transform ${
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -34,6 +44,8 @@ const AppLayout: React.FC = () => {
             >
               <Sidebar onNavItemClick={() => setSidebarOpen(false)} />
             </div>
+            
+            {/* Mobile toggle button */}
             <Button
               variant="ghost"
               size="icon"

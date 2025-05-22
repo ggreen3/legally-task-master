@@ -65,6 +65,57 @@ export type Database = {
           },
         ]
       }
+      documents: {
+        Row: {
+          assignment_id: string | null
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           avatar: string | null
