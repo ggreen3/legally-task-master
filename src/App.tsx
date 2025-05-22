@@ -9,6 +9,7 @@ import AppLayout from "./components/layout/AppLayout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Assignments from "./pages/Assignments";
+import AssignmentDetail from "./pages/AssignmentDetail";
 import Employees from "./pages/Employees";
 import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/assignments" element={<Assignments />} />
+            <Route path="/assignments/:id" element={<AssignmentDetail />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/tasks" element={<Tasks />} />
           </Route>
