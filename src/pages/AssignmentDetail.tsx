@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ import DocumentManagement from '@/components/documents/DocumentManagement';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Assignment, Employee, Task } from '@/types';
-import { adaptAssignment } from '@/utils/databaseAdapters';
+import { adaptAssignment, adaptTask } from '@/utils/databaseAdapters';
 import { useIsMobile } from '@/hooks/use-mobile';
 import AssignmentTasksList from '@/components/assignments/AssignmentTasksList';
 
@@ -64,9 +63,12 @@ const AssignmentDetail = () => {
         // Use the adapter to convert database records to our application model
         const adaptedAssignment = adaptAssignment(assignmentData);
         
+        // Adapt tasks from database format to application format
+        const adaptedTasks = tasksData ? tasksData.map(task => adaptTask(task)) : [];
+        
         setAssignment(adaptedAssignment);
         setEmployees(employeesData as Employee[]);
-        setTasks(tasksData as Task[]);
+        setTasks(adaptedTasks);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
@@ -82,6 +84,7 @@ const AssignmentDetail = () => {
     fetchData();
   }, [id, toast]);
 
+  
   // Find assigned employees
   const getAssignedEmployees = () => {
     if (!assignment) return [];
