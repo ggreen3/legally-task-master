@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -6,7 +5,8 @@ import {
   Briefcase, 
   Calendar, 
   Users, 
-  Check 
+  Check,
+  Mail
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -76,6 +76,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavItemClick }) => {
           icon={<Check className="h-5 w-5" />} 
           label="Task Tracker" 
           active={isActive('/tasks')} 
+          onClick={onNavItemClick}
+        />
+        <SidebarItem 
+          to="/outlook" 
+          icon={<Mail className="h-5 w-5" />} 
+          label="Outlook" 
+          active={isActive('/outlook')} 
           onClick={onNavItemClick}
         />
       </div>

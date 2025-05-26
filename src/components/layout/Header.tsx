@@ -30,6 +30,7 @@ const Header: React.FC = () => {
         <Link to="/dashboard" className="text-white hover:text-legally-300 transition-colors">Dashboard</Link>
         <Link to="/assignments" className="text-white hover:text-legally-300 transition-colors">Assignments</Link>
         <Link to="/employees" className="text-white hover:text-legally-300 transition-colors">Team</Link>
+        <Link to="/outlook" className="text-white hover:text-legally-300 transition-colors">Outlook</Link>
       </nav>
       <div>
         <DropdownMenu>

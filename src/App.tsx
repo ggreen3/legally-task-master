@@ -12,6 +12,8 @@ import Assignments from "./pages/Assignments";
 import AssignmentDetail from "./pages/AssignmentDetail";
 import Employees from "./pages/Employees";
 import Tasks from "./pages/Tasks";
+import Outlook from "./pages/Outlook";
+import OutlookCallback from "./pages/OutlookCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,7 +32,9 @@ const App = () => (
             <Route path="/assignments/:id" element={<AssignmentDetail />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/tasks" element={<Tasks />} />
+            <Route path="/outlook" element={<Outlook />} />
           </Route>
+          <Route path="/outlook-callback" element={<OutlookCallback />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
