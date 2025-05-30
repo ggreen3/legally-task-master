@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -48,7 +47,7 @@ export const useOutlook = () => {
   const { toast } = useToast();
 
   const getAuthUrl = useCallback(() => {
-    const clientId = 'YOUR_CLIENT_ID'; // This will be replaced with env variable
+    const clientId = '0deedfc0-6dbd-4dc2-a391-ff35f12ff4b2';
     const redirectUri = encodeURIComponent(window.location.origin + '/outlook-callback');
     const scope = encodeURIComponent('https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/User.Read');
     
